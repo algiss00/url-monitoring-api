@@ -4,10 +4,16 @@ import com.applifting.code_assessment.domain.MonitoredEndpoint;
 import com.applifting.code_assessment.domain.MonitoringResult;
 import com.applifting.code_assessment.repositories.MonitoredEndpointRepository;
 import com.applifting.code_assessment.repositories.MonitoringResultRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.PostConstruct;
@@ -20,6 +26,8 @@ import java.util.concurrent.ScheduledFuture;
 
 @Service
 public class MonitoringService {
+
+    private static final Logger logger = LoggerFactory.getLogger(MonitoringService.class);
 
     private final MonitoredEndpointRepository monitoredEndpointRepository;
     private final MonitoringResultRepository monitoringResultRepository;
@@ -50,6 +58,7 @@ public class MonitoringService {
         scheduledTasks.put(endpoint.getId(), future);
     }
 
+    @Transactional
     public void monitorEndpoint(MonitoredEndpoint endpoint) {
         try {
             ResponseEntity<String> response = restTemplate.getForEntity(endpoint.getUrl(), String.class);
@@ -64,9 +73,19 @@ public class MonitoringService {
 
             endpoint.setDateOfLastCheck(LocalDateTime.now());
             monitoredEndpointRepository.save(endpoint);
+
+            logger.info("Monitored endpoint {} - Status: {}", endpoint.getUrl(), response.getStatusCode().value());
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            // Handling HTTP errors (4xx, 5xx)
+            logger.error("HTTP error while monitoring endpoint {}: Status - {}, Message - {}",
+                    endpoint.getUrl(), e.getStatusCode().value(), e.getMessage());
+        } catch (ResourceAccessException e) {
+            // Handling connection errors (e.g. timeouts)
+            logger.error("Resource access error while monitoring endpoint {}: Message - {}",
+                    endpoint.getUrl(), e.getMessage());
         } catch (Exception e) {
-            // Zpracování chyb, například logování
-            System.out.println("Cant reach url: " + endpoint.getUrl());
+            logger.error("Unexpected error while monitoring endpoint {}: Message - {}",
+                    endpoint.getUrl(), e.getMessage());
         }
     }
 

@@ -1,13 +1,12 @@
 package com.applifting.code_assessment.exceptions;
 
-
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
-@ResponseStatus(HttpStatus.UNAUTHORIZED)
-public class UnauthorizedException extends RuntimeException {
+@ResponseStatus(HttpStatus.FORBIDDEN)
+public class ForbiddenException extends RuntimeException {
 
-    public UnauthorizedException(String message) {
+    public ForbiddenException(String message) {
         super(message);
     }
 

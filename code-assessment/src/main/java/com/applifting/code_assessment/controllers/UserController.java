@@ -7,8 +7,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Optional;
-
 @RestController
 @RequestMapping("/monitoring-app/users")
 public class UserController {
@@ -22,8 +20,8 @@ public class UserController {
 
     @GetMapping("/me")
     public ResponseEntity<User> getUserDetails(@RequestHeader("Authorization") String accessToken) {
-        Optional<User> user = userService.findByAccessToken(accessToken);
-        return user.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+        User user = userService.getUserByAccessToken(accessToken);
+        return ResponseEntity.ok(user);
     }
 
     @PostMapping("/register")

@@ -2,9 +2,14 @@ package com.applifting.code_assessment.services;
 
 import com.applifting.code_assessment.domain.MonitoredEndpoint;
 import com.applifting.code_assessment.domain.User;
+import com.applifting.code_assessment.exceptions.ForbiddenException;
 import com.applifting.code_assessment.repositories.MonitoredEndpointRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -16,14 +21,18 @@ public class MonitoredEndpointService {
     private final MonitoredEndpointRepository monitoredEndpointRepository;
     private final UserService userService;
     private final MonitoringService monitoringService;
+    private final MessageSource messageSource;
 
     @Autowired
-    public MonitoredEndpointService(MonitoredEndpointRepository monitoredEndpointRepository, UserService userService, MonitoringService monitoringService) {
+    public MonitoredEndpointService(MonitoredEndpointRepository monitoredEndpointRepository, UserService userService,
+                                    MonitoringService monitoringService, MessageSource messageSource) {
         this.monitoredEndpointRepository = monitoredEndpointRepository;
         this.userService = userService;
         this.monitoringService = monitoringService;
+        this.messageSource = messageSource;
     }
 
+    @Transactional
     public MonitoredEndpoint createMonitoredEndpoint(String accessToken, MonitoredEndpoint endpoint) {
         User user = userService.getUserByAccessToken(accessToken);
         endpoint.setOwner(user);
@@ -39,29 +48,24 @@ public class MonitoredEndpointService {
         return monitoredEndpointRepository.findByOwner(user);
     }
 
-    public Optional<MonitoredEndpoint> updateMonitoredEndpoint(String accessToken, Long id, MonitoredEndpoint endpoint) {
-        User user = userService.getUserByAccessToken(accessToken);
-        Optional<MonitoredEndpoint> existingEndpoint = monitoredEndpointRepository.findById(id);
-        if (existingEndpoint.isPresent() && existingEndpoint.get().getOwner().getId().equals(user.getId())) {
-            updateEndpointWithPersistentData(user, id, endpoint, existingEndpoint.get());
-            MonitoredEndpoint updatedEndpoint = monitoredEndpointRepository.save(endpoint);
+    @Transactional
+    public MonitoredEndpoint updateMonitoredEndpoint(String accessToken, Long id, MonitoredEndpoint endpoint) {
+        MonitoredEndpoint existingEndpoint = validateUserAndGetEndpoint(accessToken, id, messageSource.getMessage("forbidden.update", null, LocaleContextHolder.getLocale()));
 
-            monitoringService.stopMonitoring(id);
-            monitoringService.scheduleEndpointMonitoring(updatedEndpoint);
-            return Optional.of(updatedEndpoint);
-        }
-        return Optional.empty();
+        updateEndpointWithPersistentData(existingEndpoint.getOwner(), id, endpoint, existingEndpoint);
+        MonitoredEndpoint updatedEndpoint = monitoredEndpointRepository.save(endpoint);
+
+        monitoringService.stopMonitoring(id);
+        monitoringService.scheduleEndpointMonitoring(updatedEndpoint);
+        return updatedEndpoint;
     }
 
-    public boolean deleteMonitoredEndpoint(String accessToken, Long id) {
-        User user = userService.getUserByAccessToken(accessToken);
-        Optional<MonitoredEndpoint> endpoint = monitoredEndpointRepository.findById(id);
-        if (endpoint.isPresent() && endpoint.get().getOwner().getId().equals(user.getId())) {
-            monitoredEndpointRepository.deleteById(id);
-            monitoringService.stopMonitoring(id);
-            return true;
-        }
-        return false;
+    @Transactional
+    public void deleteMonitoredEndpoint(String accessToken, Long id) {
+        validateUserAndGetEndpoint(accessToken, id, messageSource.getMessage("forbidden.delete", null, LocaleContextHolder.getLocale()));
+
+        monitoringService.stopMonitoring(id);
+        monitoredEndpointRepository.deleteById(id);
     }
 
     public Optional<MonitoredEndpoint> findById(Long endpointId) {
@@ -70,6 +74,18 @@ public class MonitoredEndpointService {
 
     public List<MonitoredEndpoint> findAll() {
         return monitoredEndpointRepository.findAll();
+    }
+
+    public MonitoredEndpoint validateUserAndGetEndpoint(String accessToken, Long id, String message) {
+        User user = userService.getUserByAccessToken(accessToken);
+        MonitoredEndpoint endpoint = monitoredEndpointRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException(messageSource.getMessage("entityNotFoundException.notFound", null, LocaleContextHolder.getLocale())));
+
+        if (!endpoint.getOwner().getId().equals(user.getId())) {
+            throw new ForbiddenException(message);
+        }
+
+        return endpoint;
     }
 
     private void updateEndpointWithPersistentData(User user, Long id, MonitoredEndpoint endpoint, MonitoredEndpoint existingEndpoint) {

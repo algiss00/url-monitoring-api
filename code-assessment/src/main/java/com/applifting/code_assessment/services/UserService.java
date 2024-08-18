@@ -4,27 +4,26 @@ import com.applifting.code_assessment.domain.User;
 import com.applifting.code_assessment.exceptions.UnauthorizedException;
 import com.applifting.code_assessment.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
-
-import java.util.Optional;
 
 @Service
 public class UserService {
 
     private final UserRepository userRepository;
+    private final MessageSource messageSource;
 
     @Autowired
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, MessageSource messageSource) {
         this.userRepository = userRepository;
-    }
-
-    public Optional<User> findByAccessToken(String accessToken) {
-        return userRepository.findByAccessToken(accessToken);
+        this.messageSource = messageSource;
     }
 
     public User getUserByAccessToken(String accessToken) {
         return userRepository.findByAccessToken(accessToken)
-                .orElseThrow(() -> new UnauthorizedException("Invalid access token"));
+                .orElseThrow(() ->
+                        new UnauthorizedException(messageSource.getMessage("unauthorized.access", null, LocaleContextHolder.getLocale())));
     }
 
     public User createUser(String username, String email) {

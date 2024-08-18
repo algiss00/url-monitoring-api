@@ -8,7 +8,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/monitoring-app/endpoints")
@@ -41,20 +40,16 @@ public class MonitoredEndpointController {
             @RequestHeader("Authorization") String accessToken,
             @PathVariable Long id,
             @RequestBody MonitoredEndpoint endpoint) {
-        Optional<MonitoredEndpoint> updatedEndpoint = monitoredEndpointService.updateMonitoredEndpoint(accessToken, id, endpoint);
-        return updatedEndpoint.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.status(HttpStatus.FORBIDDEN).build());
+        MonitoredEndpoint updatedEndpoint = monitoredEndpointService.updateMonitoredEndpoint(accessToken, id, endpoint);
+        return ResponseEntity.ok(updatedEndpoint);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteEndpoint(
             @RequestHeader("Authorization") String accessToken,
             @PathVariable Long id) {
-        boolean success = monitoredEndpointService.deleteMonitoredEndpoint(accessToken, id);
-        if (success) {
-            return ResponseEntity.noContent().build();
-        } else {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
+        monitoredEndpointService.deleteMonitoredEndpoint(accessToken, id);
+        return ResponseEntity.noContent().build();
     }
 
 }
