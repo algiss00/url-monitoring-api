@@ -1,5 +1,6 @@
 package com.applifting.code_assessment.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -24,6 +25,7 @@ public class MonitoringResult {
 
     @ManyToOne
     @JoinColumn(name = "endpoint_id", nullable = false)
+    @JsonIgnore
     private MonitoredEndpoint monitoredEndpoint;
 
 }

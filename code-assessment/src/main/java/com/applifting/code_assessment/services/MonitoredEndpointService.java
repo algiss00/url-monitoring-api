@@ -91,6 +91,7 @@ public class MonitoredEndpointService {
     private void updateEndpointWithPersistentData(User user, Long id, MonitoredEndpoint endpoint, MonitoredEndpoint existingEndpoint) {
         endpoint.setId(id);
         endpoint.setOwner(user);
+        endpoint.setMonitoringResults(existingEndpoint.getMonitoringResults());
         endpoint.setDateOfCreation(existingEndpoint.getDateOfCreation());
         endpoint.setDateOfLastCheck(existingEndpoint.getDateOfLastCheck());
     }

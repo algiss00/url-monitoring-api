@@ -61,7 +61,8 @@ public class MonitoringService {
     @Transactional
     public void monitorEndpoint(MonitoredEndpoint endpoint) {
         try {
-            ResponseEntity<String> response = restTemplate.getForEntity(endpoint.getUrl(), String.class);
+            String url = addDefaultProtocolIfMissing(endpoint.getUrl());
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 
             MonitoringResult result = new MonitoringResult();
             result.setMonitoredEndpoint(endpoint);
@@ -72,9 +73,10 @@ public class MonitoringService {
             monitoringResultRepository.save(result);
 
             endpoint.setDateOfLastCheck(LocalDateTime.now());
+            endpoint.getMonitoringResults().add(result);
             monitoredEndpointRepository.save(endpoint);
 
-            logger.info("Monitored endpoint {} - Status: {}", endpoint.getUrl(), response.getStatusCode().value());
+            logger.info("Monitored endpoint {} - Status: {}", url, response.getStatusCode().value());
         } catch (HttpClientErrorException | HttpServerErrorException e) {
             // Handling HTTP errors (4xx, 5xx)
             logger.error("HTTP error while monitoring endpoint {}: Status - {}, Message - {}",
@@ -95,6 +97,13 @@ public class MonitoringService {
             future.cancel(false);
             scheduledTasks.remove(endpointId);
         }
+    }
+
+    private String addDefaultProtocolIfMissing(String url) {
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            return "https://" + url;
+        }
+        return url;
     }
 
 }
