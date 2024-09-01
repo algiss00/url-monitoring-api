@@ -20,7 +20,7 @@ A Spring Boot REST API microservice for monitoring HTTP/HTTPS URLs. The service 
 2. **Configure the database:**
    Update the application.properties file in src/main/resources/ with your MySQL database settings.
 
-3. **Build and Run:**
+3. **Build and Run**
 
 ## Available API Endpoints
 
