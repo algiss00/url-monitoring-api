@@ -75,7 +75,6 @@ public class MonitoringService {
             endpoint.setDateOfLastCheck(LocalDateTime.now());
             endpoint.getMonitoringResults().add(result);
             monitoredEndpointRepository.save(endpoint);
-
             logger.info("Monitored endpoint {} - Status: {}", url, response.getStatusCode().value());
         } catch (HttpClientErrorException | HttpServerErrorException e) {
             // Handling HTTP errors (4xx, 5xx)

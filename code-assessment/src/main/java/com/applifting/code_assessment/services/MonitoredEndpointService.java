@@ -34,6 +34,8 @@ public class MonitoredEndpointService {
 
     @Transactional
     public MonitoredEndpoint createMonitoredEndpoint(String accessToken, MonitoredEndpoint endpoint) {
+        validateEndpoint(endpoint);
+
         User user = userService.getUserByAccessToken(accessToken);
         endpoint.setOwner(user);
         endpoint.setDateOfCreation(LocalDateTime.now());
@@ -50,8 +52,9 @@ public class MonitoredEndpointService {
 
     @Transactional
     public MonitoredEndpoint updateMonitoredEndpoint(String accessToken, Long id, MonitoredEndpoint endpoint) {
-        MonitoredEndpoint existingEndpoint = validateUserAndGetEndpoint(accessToken, id, messageSource.getMessage("forbidden.update", null, LocaleContextHolder.getLocale()));
+        validateEndpoint(endpoint);
 
+        MonitoredEndpoint existingEndpoint = authorizeAndFetchEndpoint(accessToken, id, messageSource.getMessage("forbidden.update", null, LocaleContextHolder.getLocale()));
         updateEndpointWithPersistentData(existingEndpoint.getOwner(), id, endpoint, existingEndpoint);
         MonitoredEndpoint updatedEndpoint = monitoredEndpointRepository.save(endpoint);
 
@@ -62,7 +65,7 @@ public class MonitoredEndpointService {
 
     @Transactional
     public void deleteMonitoredEndpoint(String accessToken, Long id) {
-        validateUserAndGetEndpoint(accessToken, id, messageSource.getMessage("forbidden.delete", null, LocaleContextHolder.getLocale()));
+        authorizeAndFetchEndpoint(accessToken, id, messageSource.getMessage("forbidden.delete", null, LocaleContextHolder.getLocale()));
 
         monitoringService.stopMonitoring(id);
         monitoredEndpointRepository.deleteById(id);
@@ -76,7 +79,7 @@ public class MonitoredEndpointService {
         return monitoredEndpointRepository.findAll();
     }
 
-    public MonitoredEndpoint validateUserAndGetEndpoint(String accessToken, Long id, String message) {
+    public MonitoredEndpoint authorizeAndFetchEndpoint(String accessToken, Long id, String message) {
         User user = userService.getUserByAccessToken(accessToken);
         MonitoredEndpoint endpoint = monitoredEndpointRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(messageSource.getMessage("entityNotFoundException.notFound", null, LocaleContextHolder.getLocale())));
@@ -94,6 +97,16 @@ public class MonitoredEndpointService {
         endpoint.setMonitoringResults(existingEndpoint.getMonitoringResults());
         endpoint.setDateOfCreation(existingEndpoint.getDateOfCreation());
         endpoint.setDateOfLastCheck(existingEndpoint.getDateOfLastCheck());
+    }
+
+    private void validateEndpoint(MonitoredEndpoint endpoint) {
+        if (endpoint.getUrl() == null || endpoint.getUrl().trim().isEmpty()) {
+            throw new IllegalArgumentException("URL cannot be empty");
+        }
+
+        if (endpoint.getMonitoredInterval() == null || endpoint.getMonitoredInterval() < 1) {
+            throw new IllegalArgumentException("Monitored interval must be greater or equal than 1 second");
+        }
     }
 
 }

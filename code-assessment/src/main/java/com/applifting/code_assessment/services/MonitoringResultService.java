@@ -28,7 +28,7 @@ public class MonitoringResultService {
     }
 
     public List<MonitoringResult> getLast10ResultsForUserAndEndpoint(String accessToken, Long endpointId) {
-        MonitoredEndpoint endpoint = monitoredEndpointService.validateUserAndGetEndpoint(accessToken, endpointId, messageSource.getMessage("forbidden.read", null, LocaleContextHolder.getLocale()));
+        MonitoredEndpoint endpoint = monitoredEndpointService.authorizeAndFetchEndpoint(accessToken, endpointId, messageSource.getMessage("forbidden.read", null, LocaleContextHolder.getLocale()));
         return monitoringResultRepository.findTop10ByMonitoredEndpointOrderByDateOfCheckDesc(endpoint);
     }
 
